@@ -1,4 +1,4 @@
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `nickname` varchar(128) NOT NULL,
   `login_name` varchar(128) NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE `users` (
   UNIQUE KEY `login_name_uniq` (`login_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `events` (
+CREATE TABLE IF NOT EXISTS `events` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `title` varchar(128) NOT NULL,
   `public_fg` tinyint(1) NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `cancelled_reservations` (
   KEY `event_id_and_sheet_id_idx` (`event_id`,`sheet_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `administrators` (
+CREATE TABLE IF NOT EXISTS`administrators` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `nickname` varchar(128) NOT NULL,
   `login_name` varchar(128) NOT NULL,
