@@ -1,8 +1,10 @@
-CREATE TABLE IF NOT EXISTS `users` (
-  `id` varchar(128) NOT NULL,
+CREATE TABLE `users` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
   `nickname` varchar(128) NOT NULL,
+  `login_name` varchar(128) NOT NULL,
   `pass_hash` varchar(128) NOT NULL,
-  PRIMARY KEY (`login_name`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `login_name_uniq` (`login_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `events` (
@@ -14,30 +16,32 @@ CREATE TABLE `events` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `reservations` (
+CREATE TABLE IF NOT EXISTS `reservations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `event_id` int unsigned NOT NULL,
   `sheet_id` int unsigned NOT NULL,
-  `user_id` varchar(128) NOT NULL,
-  `reserved_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `user_id` int unsigned NOT NULL,
+  `reserved_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
   KEY `event_id_and_sheet_id_idx` (`event_id`,`sheet_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `cancelled_reservations` (
+CREATE TABLE IF NOT EXISTS `cancelled_reservations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `event_id` int unsigned NOT NULL,
   `sheet_id` int unsigned NOT NULL,
-  `user_id` varchar(128) NOT NULL,
-  `reserved_at` datetime(6) NOT NULL,
-  `canceled_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `user_id` int unsigned NOT NULL,
+  `reserved_at` timestamp(6) NOT NULL,
+  `canceled_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
   KEY `event_id_and_sheet_id_idx` (`event_id`,`sheet_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `administrators` (
-  `login_name` varchar(128) NOT NULL,
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
   `nickname` varchar(128) NOT NULL,
+  `login_name` varchar(128) NOT NULL,
   `pass_hash` varchar(128) NOT NULL,
-  PRIMARY KEY (`login_name`),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `login_name_uniq` (`login_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
