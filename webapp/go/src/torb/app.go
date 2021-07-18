@@ -858,8 +858,6 @@ func main() {
 		if err != nil {
 			return err
 		}
-		defer rows.Close()
-
 		var reports []Report
 		for rows.Next() {
 			var reservation Reservation
@@ -881,6 +879,35 @@ func main() {
 			}
 			reports = append(reports, report)
 		}
+		rows.Close()
+
+		rows, err = db.Query("SELECT r.*, s.rank AS sheet_rank, s.num AS sheet_num, s.price AS sheet_price, e.price AS event_price FROM cancelled_reservations r INNER JOIN sheets s ON s.id = r.sheet_id INNER JOIN events e ON e.id = r.event_id WHERE r.event_id = ? ORDER BY reserved_at ASC FOR UPDATE", event.ID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var reservation Reservation
+			var sheet Sheet
+			if err := rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt, &sheet.Rank, &sheet.Num, &sheet.Price, &event.Price); err != nil {
+				return err
+			}
+			report := Report{
+				ReservationID: reservation.ID,
+				EventID:       event.ID,
+				Rank:          sheet.Rank,
+				Num:           sheet.Num,
+				UserID:        reservation.UserID,
+				SoldAt:        reservation.ReservedAt.Format("2006-01-02T15:04:05.000000Z"),
+				Price:         event.Price + sheet.Price,
+			}
+			if reservation.CanceledAt != nil {
+				report.CanceledAt = reservation.CanceledAt.Format("2006-01-02T15:04:05.000000Z")
+			}
+			reports = append(reports, report)
+		}
+
 		return renderReportCSV(c, reports)
 	}, adminLoginRequired)
 	e.GET("/admin/api/reports/sales", func(c echo.Context) error {
