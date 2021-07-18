@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `cancelled_reservations` (
   KEY `event_id_and_sheet_id_idx` (`event_id`,`sheet_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS`administrators` (
+CREATE TABLE IF NOT EXISTS `administrators` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `nickname` varchar(128) NOT NULL,
   `login_name` varchar(128) NOT NULL,
