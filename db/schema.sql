@@ -25,13 +25,13 @@ CREATE TABLE IF NOT EXISTS `sheets` (
   UNIQUE KEY `rank_num_uniq` (`rank`,`num`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-
 CREATE TABLE IF NOT EXISTS `reservations` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `event_id` int unsigned NOT NULL,
   `sheet_id` int unsigned NOT NULL,
   `user_id` int unsigned NOT NULL,
-  `reserved_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `reserved_at` datetime(6) NOT NULL,
+  `canceled_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `event_id_and_sheet_id_idx` (`event_id`,`sheet_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -41,8 +41,8 @@ CREATE TABLE IF NOT EXISTS `cancelled_reservations` (
   `event_id` int unsigned NOT NULL,
   `sheet_id` int unsigned NOT NULL,
   `user_id` int unsigned NOT NULL,
-  `reserved_at` timestamp(6) NOT NULL,
-  `canceled_at` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `reserved_at` datetime(6) NOT NULL,
+  `canceled_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `event_id_and_sheet_id_idx` (`event_id`,`sheet_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
