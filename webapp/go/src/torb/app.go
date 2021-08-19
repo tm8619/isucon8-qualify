@@ -319,25 +319,25 @@ func getEvent(eventID, loginUserID int64) (*Event, error) {
 			C[reservation.SheetID] += 1
 		}
 	}
-	for i := int64(0); i < 50; i++ {
+	for i := int64(1); i <= 50; i++ {
 		if S[i] == 0 {
 			sheet := getSheetFromID(i)
 			event.Sheets["S"].Detail = append(event.Sheets["S"].Detail, &sheet)
 		}
 	}
-	for i := int64(50); i < 200; i++ {
+	for i := int64(51); i <= 200; i++ {
 		if A[i] == 0 {
 			sheet := getSheetFromID(i)
 			event.Sheets["A"].Detail = append(event.Sheets["A"].Detail, &sheet)
 		}
 	}
-	for i := int64(200); i < 500; i++ {
+	for i := int64(201); i <= 500; i++ {
 		if B[i] == 0 {
 			sheet := getSheetFromID(i)
 			event.Sheets["B"].Detail = append(event.Sheets["B"].Detail, &sheet)
 		}
 	}
-	for i := int64(500); i < 1000; i++ {
+	for i := int64(501); i <= 1000; i++ {
 		if C[i] == 0 {
 			sheet := getSheetFromID(i)
 			event.Sheets["C"].Detail = append(event.Sheets["C"].Detail, &sheet)
@@ -673,36 +673,21 @@ func main() {
 		var sheet Sheet
 		var reservationID int64
 		for {
-			if err := db.QueryRow("SELECT * FROM sheets WHERE id NOT IN (SELECT sheet_id FROM reservations WHERE event_id = ? AND canceled_at IS NULL FOR UPDATE) AND `rank` = ? ORDER BY RAND() LIMIT 1", event.ID, params.Rank).Scan(&sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price); err != nil {
+			if err := db.QueryRow("SELECT * FROM sheets WHERE id NOT IN (SELECT sheet_id FROM reservations WHERE event_id = ? AND canceled_at IS NULL) AND `rank` = ? ORDER BY RAND() LIMIT 1", event.ID, params.Rank).Scan(&sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price); err != nil {
 				if err == sql.ErrNoRows {
 					return resError(c, "sold_out", 409)
 				}
 				return err
 			}
 
-			tx, err := db.Begin()
+			res, err := db.Exec("INSERT INTO reservations (event_id, sheet_id, user_id, reserved_at) VALUES (?, ?, ?, ?)", event.ID, sheet.ID, user.ID, time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 			if err != nil {
-				return err
-			}
-
-			res, err := tx.Exec("INSERT INTO reservations (event_id, sheet_id, user_id, reserved_at) VALUES (?, ?, ?, ?)", event.ID, sheet.ID, user.ID, time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
-			if err != nil {
-				tx.Rollback()
-				log.Println("re-try: rollback by", err)
 				continue
 			}
 			reservationID, err = res.LastInsertId()
 			if err != nil {
-				tx.Rollback()
-				log.Println("re-try: rollback by", err)
 				continue
 			}
-			if err := tx.Commit(); err != nil {
-				tx.Rollback()
-				log.Println("re-try: rollback by", err)
-				continue
-			}
-
 			break
 		}
 		return c.JSON(202, echo.Map{
