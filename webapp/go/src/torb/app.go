@@ -221,6 +221,41 @@ func getEvents(all bool) ([]*Event, error) {
 	return events, nil
 }
 
+func getSheetFromID(sheetID int64) Sheet {
+	if 1 <= sheetID && sheetID <= 50 {
+		return Sheet{
+			ID:    sheetID,
+			Rank:  "S",
+			Num:   sheetID,
+			Price: 5000,
+		}
+	}
+	if 51 <= sheetID && sheetID <= 200 {
+		return Sheet{
+			ID:    sheetID,
+			Rank:  "A",
+			Num:   sheetID - 50,
+			Price: 3000,
+		}
+	}
+	if 201 <= sheetID && sheetID <= 500 {
+		return Sheet{
+			ID:    sheetID,
+			Rank:  "B",
+			Num:   sheetID - 200,
+			Price: 1000,
+		}
+	}
+	if 501 <= sheetID && sheetID <= 1000 {
+		return Sheet{
+			ID:    sheetID,
+			Rank:  "C",
+			Num:   sheetID - 500,
+			Price: 0,
+		}
+	}
+	return Sheet{}
+}
 func getEvent(eventID, loginUserID int64) (*Event, error) {
 	var event Event
 	if err := db.QueryRow("SELECT * FROM events WHERE id = ?", eventID).Scan(&event.ID, &event.Title, &event.PublicFg, &event.ClosedFg, &event.Price); err != nil {
@@ -232,37 +267,86 @@ func getEvent(eventID, loginUserID int64) (*Event, error) {
 		"B": &Sheets{},
 		"C": &Sheets{},
 	}
-
-	rows, err := db.Query("SELECT * FROM sheets ORDER BY `rank`, num")
-	if err != nil {
-		return nil, err
-	}
+	event.Sheets["S"].Remains = 50
+	event.Sheets["S"].Total = 50
+	event.Sheets["A"].Remains = 150
+	event.Sheets["A"].Total = 150
+	event.Sheets["B"].Remains = 300
+	event.Sheets["B"].Total = 300
+	event.Sheets["C"].Remains = 500
+	event.Sheets["C"].Total = 500
+	event.Remains = 1000
+	event.Total = 1000
+	event.Sheets["S"].Price = 5000 + event.Price
+	event.Sheets["A"].Price = 3000 + event.Price
+	event.Sheets["B"].Price = 1000 + event.Price
+	event.Sheets["C"].Price = 0 + event.Price
+	rows, err := db.Query("SELECT * FROM reservations WHERE event_id = ? AND canceled_at IS NULL GROUP BY event_id, sheet_id HAVING reserved_at = MIN(reserved_at)", event.ID)
 	defer rows.Close()
 
+	S := make(map[int64]int)
+	A := make(map[int64]int)
+	B := make(map[int64]int)
+	C := make(map[int64]int)
+
 	for rows.Next() {
-		var sheet Sheet
-		if err := rows.Scan(&sheet.ID, &sheet.Rank, &sheet.Num, &sheet.Price); err != nil {
-			return nil, err
-		}
-		event.Sheets[sheet.Rank].Price = event.Price + sheet.Price
-		event.Total++
-		event.Sheets[sheet.Rank].Total++
-
 		var reservation Reservation
-		err := db.QueryRow("SELECT * FROM reservations WHERE event_id = ? AND sheet_id = ? AND canceled_at IS NULL GROUP BY event_id, sheet_id HAVING reserved_at = MIN(reserved_at)", event.ID, sheet.ID).Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt)
-		if err == nil {
-			sheet.Mine = reservation.UserID == loginUserID
-			sheet.Reserved = true
-			sheet.ReservedAtUnix = reservation.ReservedAt.Unix()
-		} else if err == sql.ErrNoRows {
-			event.Remains++
-			event.Sheets[sheet.Rank].Remains++
-		} else {
+		if err := rows.Scan(&reservation.ID, &reservation.EventID, &reservation.SheetID, &reservation.UserID, &reservation.ReservedAt, &reservation.CanceledAt); err != nil {
 			return nil, err
 		}
 
+		if err != nil {
+			return nil, err
+		}
+		sheet := getSheetFromID(reservation.SheetID)
 		event.Sheets[sheet.Rank].Detail = append(event.Sheets[sheet.Rank].Detail, &sheet)
+		sheet.Mine = reservation.UserID == loginUserID
+		sheet.Reserved = true
+		sheet.ReservedAtUnix = reservation.ReservedAt.Unix()
+		event.Remains--
+		event.Sheets[sheet.Rank].Remains--
+
+		if sheet.Rank == "S" {
+			S[reservation.SheetID] += 1
+		}
+		if sheet.Rank == "A" {
+			A[reservation.SheetID] += 1
+		}
+		if sheet.Rank == "B" {
+			B[reservation.SheetID] += 1
+		}
+		if sheet.Rank == "C" {
+			C[reservation.SheetID] += 1
+		}
 	}
+	for i := int64(0); i < 50; i++ {
+		if S[i] == 0 {
+			sheet := getSheetFromID(i)
+			event.Sheets["S"].Detail = append(event.Sheets["S"].Detail, &sheet)
+		}
+	}
+	for i := int64(50); i < 200; i++ {
+		if A[i] == 0 {
+			sheet := getSheetFromID(i)
+			event.Sheets["A"].Detail = append(event.Sheets["A"].Detail, &sheet)
+		}
+	}
+	for i := int64(200); i < 500; i++ {
+		if B[i] == 0 {
+			sheet := getSheetFromID(i)
+			event.Sheets["B"].Detail = append(event.Sheets["B"].Detail, &sheet)
+		}
+	}
+	for i := int64(500); i < 1000; i++ {
+		if C[i] == 0 {
+			sheet := getSheetFromID(i)
+			event.Sheets["C"].Detail = append(event.Sheets["C"].Detail, &sheet)
+		}
+	}
+	sort.Slice(event.Sheets["S"].Detail, func(i, j int) bool { return event.Sheets["S"].Detail[i].ID < event.Sheets["S"].Detail[j].ID })
+	sort.Slice(event.Sheets["A"].Detail, func(i, j int) bool { return event.Sheets["A"].Detail[i].ID < event.Sheets["A"].Detail[j].ID })
+	sort.Slice(event.Sheets["B"].Detail, func(i, j int) bool { return event.Sheets["B"].Detail[i].ID < event.Sheets["B"].Detail[j].ID })
+	sort.Slice(event.Sheets["C"].Detail, func(i, j int) bool { return event.Sheets["C"].Detail[i].ID < event.Sheets["C"].Detail[j].ID })
 
 	return &event, nil
 }
@@ -294,9 +378,10 @@ func fillinAdministrator(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 func validateRank(rank string) bool {
-	var count int
-	db.QueryRow("SELECT COUNT(*) FROM sheets WHERE `rank` = ?", rank).Scan(&count)
-	return count > 0
+	if rank == "S" || rank == "A" || rank == "B" || rank == "C" {
+		return true
+	}
+	return false
 }
 
 type Renderer struct {
